@@ -1,6 +1,79 @@
 const Task = require('../models/Task')
 const asyncWrapper = require('../middleware/async')
+const {createCustomError} = require('../errors/custom-error')
 
+//using asyncWrapper middleware:
+
+const getAllTasks = asyncWrapper(async (req, res) => {
+        const tasks = await Task.find({});
+        res.status(200).json({ tasks: tasks });
+})
+
+const createTask = asyncWrapper(async(req, res) => {
+    //.create expects an object, here passing req.body
+        const task = await Task.create(req.body);
+        res.status(201).json({ task:task });
+    
+})
+
+const getTask = asyncWrapper(async(req, res,next) => {
+
+        const { id:taskID } = req.params;
+        const singleTask = await Task.findOne({ _id: taskID })
+        if(!singleTask) {
+            return next(createCustomError(`No task with id : ${taskID}`, 404))
+            // return res.status(404).json({ msg: `Task with id ${taskID} not found`}) //err for replacing chars to same syntax
+        }
+        res.status(200).json({ task: singleTask })
+
+    
+})
+
+const updateTask = asyncWrapper(async(req, res,next) => {
+
+        const { id: taskID } = req.params;
+        console.log(req.body);
+        const singleTask = await Task.findByIdAndUpdate({ _id: taskID }, req.body, {
+            new: true,//shows the updated/new task
+            runValidators: true,//runs the schema validators
+        })
+        if (!singleTask) {
+            return next(createCustomError(`No task with id : ${taskID}`, 404))
+            // return res.status(404).json({ msg: `Task with id ${taskID} not found` })
+        }
+        res.status(200).json({ task: singleTask })
+})
+
+const editTask = asyncWrapper(async (req, res,next) => {
+        const { id: taskID } = req.params;
+        console.log(req.body);
+        const singleTask = await Task.findByIdAndUpdate({ _id: taskID }, req.body, {
+            new: true,//shows the updated/new task
+            runValidators: true,//runs the schema validators
+            overwrite:true //keeps what ever is passed in req.body and removes other props - diff b/w PUT n PATCH 
+        })
+        if (!singleTask) {
+            return next(createCustomError(`No task with id : ${taskID}`, 404))
+
+            // return res.status(404).json({ msg: `Task with id ${taskID} not found` })
+        }
+        res.status(200).json({ task: singleTask })
+})
+
+const deleteTask = asyncWrapper(async(req, res,next) => {
+        const {id:taskID} = req.params;
+        const singleTask = await Task.findOneAndDelete({_id:taskID});
+        if(!singleTask) {
+            return next(createCustomError(`No task with id : ${taskID}`, 404))
+
+            // return res.status(404).json({msg:`Task with id ${taskID} not found`})
+        }
+        res.status(200).json({task:singleTask});
+})
+
+module.exports = { getAllTasks, createTask, getTask, updateTask, deleteTask, editTask }
+
+/*
 const getAllTasks = async(req, res) => {
     try {
         const tasks =  await Task.find({});
@@ -18,11 +91,7 @@ const getAllTasks = async(req, res) => {
     
 }
 
-//using asyncWrapper middleware:
-// const getAllTasks = asyncWrapper(async (req, res) => {
-//         const tasks = await Task.find({});
-//         res.status(200).json({ tasks: tasks });
-// })
+
 
 const createTask = async(req, res) => {
     //.create expects an object, here passing req.body
@@ -98,9 +167,8 @@ const deleteTask = async(req, res) => {
     } catch(error) {
         res.status(500).json({msg:error});
     }
-}
+}*/
 
-module.exports = {getAllTasks, createTask, getTask, updateTask, deleteTask, editTask}
 
 //PUT - It will overwrite with what ever props sent in req.body
 //PATCH  - It will only take those props which are changed in req.body and keep the default values as it is
